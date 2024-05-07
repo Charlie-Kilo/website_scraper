@@ -1,13 +1,14 @@
-use lettre::{message::{SinglePart}, Transport};
+use lettre::{message::SinglePart, Transport};
 use lettre::transport::smtp::authentication::Credentials;
 use std::{fs, error::Error};
-use csv::ReaderBuilder;
+use csv::{ReaderBuilder, StringRecord};
+use chrono::{NaiveDateTime, Utc};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     // Configure SMTP server details
     let smtp_server = "smtp-mail.com";
     let smtp_port = 587; // Example port, adjust as per your SMTP provider's configuration
-    let smtp_username = "enail@example.com";
+    let smtp_username = "sender@example.com";
     let smtp_password = "password";
 
     // Create SMTP client
@@ -28,24 +29,42 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Extract headers
     let headers = rdr.headers()?.clone();
     let headers_row = headers.iter()
-        .map(|header| format!("<th>{}</th>", header))
+        .map(|header| format!("<th style=\"padding: 8px;\">{}</th>", header))
         .collect::<Vec<String>>()
         .join("");
 
-    // Prepare email body with HTML formatting
+    // Extract records, convert each StringRecord into a Vec<String>, and sort by date
+    let mut records: Vec<Vec<String>> = rdr.records()
+        .map(|r| r.unwrap().iter().map(|f| f.to_string()).collect())
+        .collect();
+    records.sort_by(|a, b| {
+        let date_a = NaiveDateTime::parse_from_str(&a[0], "%Y-%m-%d %H:%M:%S").unwrap();
+        let date_b = NaiveDateTime::parse_from_str(&b[0], "%Y-%m-%d %H:%M:%S").unwrap();
+        date_b.cmp(&date_a)
+    });
+
+    // Prepare HTML table rows with appropriate styling
     let mut body_content = String::new();
-    for result in rdr.records() {
-        let record = result?;
-        let record_row = record.iter()
-            .map(|field| format!("<td>{}</td>", field))
-            .collect::<Vec<String>>()
-            .join("");
-        body_content.push_str(&format!("<tr>{}</tr>", record_row));
+    for (i, record) in records.iter().enumerate() {
+        let mut record_row = String::new();
+        let row_style = if i == 0 { "background-color: lightgreen;" } else { "" };
+        for field in record.iter() {
+            let cell_content = if field.is_empty() {
+                "<td style=\"padding: 8px; color: red;\">❌❌❌</td>".to_string()
+            } else {
+                format!("<td style=\"padding: 8px;\">{}</td>", field)
+            };
+            record_row.push_str(&cell_content);
+        }
+        body_content.push_str(&format!("<tr style=\"{}\">{}</tr>", row_style, record_row));
     }
+
     let email_body = format!(
         r#"
-        <h1 style="font-weight: bold; font-size: large;">🐃 Buffalo Trace Tracker 🐃</h1>
-        <table border="1">
+        <center>
+            <h1 style="font-weight: bold; font-size: large; padding: 8px;">🐃 Buffalo Trace Tracker 🐃</h1>
+        </center>
+        <table border="1" cellspacing="0" cellpadding="8" style="margin: auto;">
             <thead>{}</thead>
             <tbody>{}</tbody>
         </table>
@@ -55,21 +74,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create email message
     let email_builder = lettre::Message::builder()
-        .from("buffalo_trace_tracker@outlook.com".parse().unwrap());
+        .from("sender@example.com".parse().unwrap());
     let email = email_builder
-        .to("dmc1997@outlook.com".parse().unwrap())
-        .to("dmc3csc@gmail.com".parse().unwrap())
+        .to("email_2@example.com".parse().unwrap())
+        .to("email_2@example.com".parse().unwrap())
         .subject("Buffalo Trace Available Product Update")
         .singlepart(
             SinglePart::builder()
                 .header(lettre::message::header::ContentType::parse("text/html; charset=utf-8").unwrap())
                 .body(email_body),
         )
-        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
+        .map_err(|e| Box::new(e) as Box<dyn Error>)?;
 
     // Send email
     email_transport.send(&email)?;
     println!("Email sent successfully!");
     Ok(())
 }
-

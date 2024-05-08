@@ -3,4 +3,5 @@ send_email/Cargo.lock
 scraper/target/
 scraper/Cargo.lock
 scraper/buffalo_trace_products_available.csv
+send_email/buffalo_trace_products_available.csv
 .env

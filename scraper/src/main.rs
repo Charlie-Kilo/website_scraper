@@ -42,7 +42,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Write date and time in the first column
     write!(file, "{},", current_time.format("%Y-%m-%d %H:%M:%S"))?;
     
-    // Write titles of available products (up to 9)
     for i in 0..9 {
         if let Some(title) = titles.get(i) {
             write!(file, "{},", title)?;

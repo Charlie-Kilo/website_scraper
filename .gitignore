@@ -1,6 +1,4 @@
-scraper/target/
-scraoer/Cargo.lock
-send_email/target/
-send_email/Cargo.lock
+/target/
+/Cargo.lock/
 buffalo_trace_products_available.csv
 .env
